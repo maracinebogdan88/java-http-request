@@ -1,0 +1,260 @@
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONException;
+import sdk_java.Exceptions.NeokamiParametersException;
+import sdk_java.NeokamiRequest;
+
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+
+public class JavaHttpRequest {
+
+    private static HttpURLConnection conn;
+
+    public static NeokamiCurl Factory() {
+        return new NeokamiCurl();
+    }
+
+    public HttpURLConnection setConnection(String stringUrl) throws IOException {
+
+        URL url=new URL(stringUrl);
+        conn = (HttpURLConnection) url.openConnection();
+        conn.setUseCaches(false);
+        conn.setDoOutput(true);
+        conn.setDoInput(true);
+        return conn;
+    }
+
+    public StringBuilder get(String url) throws IOException, JSONException {
+
+        setConnection(url);
+        DefaultHttpClient httpClient = new DefaultHttpClient();
+
+        HttpGet httpGet=new HttpGet(url);
+        HttpResponse resp = httpClient.execute(httpGet);
+
+        StringBuilder response=new StringBuilder();
+        String line;
+        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        while ((line = reader.readLine()) != null) {
+            response.append(line);
+
+        }
+        System.out.println("Response from GET Request" + response);
+        reader.close();
+
+        return response;
+
+    }
+
+    public String post(String url, Map<String, String> params) throws IOException {
+
+        StringBuilder sb=new StringBuilder();
+        try
+        {
+            DefaultHttpClient httpClient = new DefaultHttpClient();
+            HttpPost post = new HttpPost(url);
+            if(params.get("api_key")!=null) {
+                post.setHeader("apikey", params.get("api_key"));
+            }
+            MultipartEntityBuilder builder= this.processPostParams(params);
+            HttpEntity entity = builder.build();
+            post.setEntity(entity);
+            String s;
+
+            HttpResponse response = httpClient.execute(post);
+            InputStream iStream = response.getEntity().getContent();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(iStream));
+            while (( s = reader.readLine()) != null) {
+                sb.append(s);
+
+            }
+            System.out.println("Response : "+sb);
+        }
+        catch( IOException e )
+        {
+
+            e.printStackTrace();
+        }
+
+        catch( Exception e )
+        {
+
+            e.printStackTrace();
+        }
+        return sb.toString();
+    }
+
+
+    public String postBinary(String url, String filePath, Map<String, String> params) throws IOException {
+
+        StringBuilder sb=new StringBuilder();
+        try
+        {
+            DefaultHttpClient httpClient = new DefaultHttpClient();
+            HttpPost post = new HttpPost(url);
+            if(params.get("api_key")!=null) {
+                post.setHeader("apikey", params.get("api_key"));
+            }
+            MultipartEntityBuilder builder= processDiskParams(filePath, params);
+            HttpEntity entity = builder.build();
+            post.setEntity(entity);
+            String s;
+
+            HttpResponse response = httpClient.execute(post);
+            InputStream iStream = response.getEntity().getContent();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(iStream));
+            while (( s = reader.readLine()) != null) {
+                sb.append(s);
+
+            }
+            System.out.println("Response: "+sb);
+        }
+        catch( IOException e )
+        {
+
+            e.printStackTrace();
+        }
+
+        catch( Exception e )
+        {
+
+            e.printStackTrace();
+        }
+        return sb.toString();
+    }
+
+
+
+    public String postBinary(String url, byte[] bytes, Map<String, String> params) throws IOException {
+
+        StringBuilder sb=new StringBuilder();
+        try
+        {
+            DefaultHttpClient httpClient = new DefaultHttpClient();
+            HttpPost post = new HttpPost(url);
+            if(params.get("api_key")!=null) {
+                post.setHeader("apikey", params.get("api_key"));
+            }
+            MultipartEntityBuilder builder= this.processInputStreamParams(bytes, params);
+            HttpEntity entity = builder.build();
+            post.setEntity(entity);
+            String s;
+
+            HttpResponse response = httpClient.execute(post);
+            InputStream iStream = response.getEntity().getContent();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(iStream));
+            while (( s = reader.readLine()) != null) {
+                sb.append(s);
+                System.out.println("Response " + sb);
+            }
+        }
+        catch( IOException e )
+        {
+
+            e.printStackTrace();
+        }
+
+        catch( Exception e )
+        {
+
+            e.printStackTrace();
+        }
+        return sb.toString();
+
+
+    }
+
+
+    public static MultipartEntityBuilder processPostParams(Map<String, String> params) throws UnsupportedEncodingException, JSONException, NeokamiParametersException {
+
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+
+        NeokamiRequest neokamiRequest=new NeokamiRequest();
+
+        if(neokamiRequest.checkHasAllParameters(params)) {
+            Iterator<String> it = params.keySet().iterator();
+
+
+            while (it.hasNext()) {
+                String key = it.next();
+                String value = params.get(key);
+
+                builder.addTextBody(key, value, ContentType.DEFAULT_TEXT);
+
+            }
+
+        }
+
+        return builder;
+    }
+
+    public static MultipartEntityBuilder processDiskParams(String filePath,Map<String, String> params) throws UnsupportedEncodingException, JSONException, NeokamiParametersException {
+
+
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+
+        NeokamiRequest neokamiRequest=new NeokamiRequest();
+
+        if(neokamiRequest.checkHasAllParameters(params)) {
+            File file=null;
+            Iterator<String> it = params.keySet().iterator();
+
+            file= new File(filePath);
+            if (file!=null && file.exists() && !file.isDirectory()) {
+                builder.addBinaryBody("data", file, ContentType.DEFAULT_BINARY, filePath);
+            }
+            while (it.hasNext()) {
+                String key = it.next();
+                String value = params.get(key);
+
+                builder.addTextBody(key, value, ContentType.DEFAULT_TEXT);
+
+            }
+
+        }
+        return builder;
+    }
+
+
+    public MultipartEntityBuilder processInputStreamParams(byte[] bytes,Map<String, String> params) throws IOException, JSONException, NeokamiParametersException {
+
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+
+        NeokamiRequest neokamiRequest=new NeokamiRequest();
+
+        if(neokamiRequest.checkHasAllParameters(params)) {
+
+            Iterator<String> it = params.keySet().iterator();
+
+
+            builder.addBinaryBody("data", bytes, ContentType.DEFAULT_BINARY, bytes.toString());
+
+            while (it.hasNext()) {
+                String key = it.next();
+                String value = params.get(key);
+
+                builder.addTextBody(key, value, ContentType.DEFAULT_TEXT);
+
+            }
+
+        }
+
+        return builder;
+    }
+
+}
